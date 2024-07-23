@@ -25,22 +25,49 @@ video_writer = cv2.VideoWriter("/home/cv_task/ultralytics/vid_results/object_cou
 # Init Object Counter
 counter = solutions.ObjectCounter(
     view_img=True,
-    reg_pts=region_points,
+    reg_pts=region_points, # area
     classes_names=model.names,
-    draw_tracks=True, #center point tail~~ 
+    draw_tracks=True, #box center point tail~~ 
     view_out_counts=False,
     line_thickness=2,
 )
 
+class_names = ["Bud","Flower","Receptacle","Early fruit","White fruit","50% maturity", "80% maturity"]
+
 while cap.isOpened():
-    success, im0 = cap.read()
+    success, frame = cap.read()
     if not success:
         print("Video frame is empty or video processing has been successfully completed.")
         break
-    tracks = model.track(im0, persist=True, show=False, conf=0.4,)
+    tracks = model.track(frame, persist=True, show=False, conf=0.4, verbose=True)
 
-    im0 = counter.start_counting(im0, tracks)
-    video_writer.write(im0)
+    # (현재 프레임용)탐지된 객체의 수 클래스별 집계
+    class_counts = {class_name: 0 for class_name in class_names}
+            
+    if tracks[0].boxes.id is not None:
+        for result in tracks[0]:
+            for obj in result.boxes.data.tolist():
+                class_id = int(obj[-1])
+                conf = obj[5]
+                
+                class_name = class_names[class_id]
+                class_counts[class_name] += 1
+                            
+    # 탐지된 객체 수를 프레임에 그리기(top left)
+    y_offset = 20
+    cv2.putText(frame, "Current", (10, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+    y_offset += 30
+    for class_name, count in class_counts.items():
+        if class_name == "Bud": count=class_counts["Flower"]
+        elif class_name == "Flower": count=class_counts["Bud"]
+        text = f"{class_name}: {count}"
+        cv2.putText(frame, text, (10, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+        y_offset += 30
+
+    frame = counter.start_counting(frame, tracks) # counting result (Top right)
+    video_writer.write(frame)
+
+
 
 cap.release()
 video_writer.release()
