@@ -39,7 +39,7 @@ while cap.isOpened():
     if not success:
         print("Video frame is empty or video processing has been successfully completed.")
         break
-    tracks = model.track(frame, persist=True, show=False, conf=0.4, verbose=True)
+    tracks = model.track(frame, persist=True, show=False, conf=0.32, verbose=True)
 
     # (현재 프레임용)탐지된 객체의 수 클래스별 집계
     class_counts = {class_name: 0 for class_name in class_names}
