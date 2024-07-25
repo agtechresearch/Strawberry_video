@@ -11,8 +11,17 @@ import cv2
 
 from ultralytics import YOLO, solutions
 
-model = YOLO("/home/cv_task/ultralytics/240516_ALARAD_1014_best.pt") ################ weight file path
-cap = cv2.VideoCapture("/home/cv_task/ultralytics/20221128_142439.mp4") ############# source path
+source_path="/home/cv_task/ultralytics/stable_output_video.mp4" ############# source path
+weight_path="/home/cv_task/ultralytics/240516_ALARAD_1014_best.pt" ################ weight file path
+
+vid_output_path="/home/cv_task/ultralytics/vid_results/object_track_default_conf028_iou06.avi"
+conf_v=0.28 # confidenc value for YOLOv8
+iou_v=0.6 # iou threshold for YOLOv8
+
+model = YOLO(weight_path) 
+cap = cv2.VideoCapture(source_path) 
+
+
 assert cap.isOpened(), "Error reading video file"
 w, h, fps = (int(cap.get(x)) for x in (cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FRAME_HEIGHT, cv2.CAP_PROP_FPS))
 
@@ -20,7 +29,7 @@ w, h, fps = (int(cap.get(x)) for x in (cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FR
 region_points = [(0, 00), (2000, 00), (2000,1500),(0, 1500)] ######################## region criteria
 
 # Video writer ( output path ) #######################
-video_writer = cv2.VideoWriter("/home/cv_task/ultralytics/vid_results/object_counting_output.avi", cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+video_writer = cv2.VideoWriter(vid_output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
 
 # Init Object Counter
 counter = solutions.ObjectCounter(
@@ -39,7 +48,8 @@ while cap.isOpened():
     if not success:
         print("Video frame is empty or video processing has been successfully completed.")
         break
-    tracks = model.track(frame, persist=True, show=False, conf=0.32, verbose=True)
+    tracks = model.track(frame, persist=True, show=False,iou=iou_v, conf=conf_v, verbose=True, tracker="botsort.yaml")
+
 
     # (현재 프레임용)탐지된 객체의 수 클래스별 집계
     class_counts = {class_name: 0 for class_name in class_names}
@@ -64,7 +74,7 @@ while cap.isOpened():
         cv2.putText(frame, text, (10, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
         y_offset += 30
 
-    frame = counter.start_counting(frame, tracks) # counting result (Top right)
+    frame = counter.start_counting(frame, tracks) # 영역을 지난, 누적된 객체 수를 프레임에 그리기 (Top right)
     video_writer.write(frame)
 
 
